@@ -4,8 +4,11 @@
 import numpy as np
 import cv2
 import sys
+import tensorflow as tf
+from tensorflow import keras
 from matplotlib import pyplot as plt
 
+# model = keras.models.load_model('./results/')
 filename = sys.argv[1]
 # cv2.namedWindow('output', cv2.WINDOW_NORMAL)
 input_img = cv2.imread(filename)
@@ -57,6 +60,23 @@ for c in contours:
     xmid = x + w//2
     ymid = y + w//2
     digitCnts.append([x,x1,y,y1])
+    char_box = th[y:y1, x:x1]
+    if h > w:
+        squared_img = np.pad(char_box, [(0,),((h-w)//2,)])
+    elif h < w:
+        squared_img = np.pad(char_box, [((w-h)//2,), (0, )])
+    else:
+        squared_img = char_box
+    resized = cv2.resize(squared_img, (28, 28), interpolation= cv2.INTER_LINEAR)
+    # norm_image = cv2.normalize(resized, None, alpha = 0, beta = 1, norm_type = cv2.NORM_MINMAX, dtype = cv2.CV_32F)
+    # norm_image = norm_image.reshape((norm_image.shape[0], norm_image.shape[1], 1))
+    # case = np.asarray([norm_image])
+    # pred = model.predict_classes([case])
+
+    # result = model.predict()
+    cv2.imwrite(f'obj_{counter}.png', resized)
+    np.save(f'obj_{counter}.npy', resized)
+
     # Drawing the selected contour on the original image
     cv2.rectangle(final,(x,y),(x1,y1),(0, 0, 255), 5)
     final = cv2.putText(final, f'{counter}', (x, y+h), cv2.FONT_HERSHEY_SIMPLEX, 8, (255, 0, 0), 2, cv2.LINE_AA)
