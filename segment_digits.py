@@ -44,6 +44,7 @@ def perim(frac, dim, draw_on):
     cv2.rectangle(draw_on, (coords[1], coords[0]), (coords[3], coords[2]), (0, 255, 0), 5)
     return coords
 
+
 counter = 0
 # print(hierarchy)
 p_coords = perim(.95, th.shape, final)
@@ -67,7 +68,8 @@ for c in contours:
         squared_img = np.pad(char_box, [((w-h)//2,), (0, )])
     else:
         squared_img = char_box
-    resized = cv2.resize(squared_img, (28, 28), interpolation= cv2.INTER_LINEAR)
+    squared_img = np.pad(squared_img, int(.2*max(h, w)))
+    resized = cv2.resize(squared_img, (28, 28), interpolation= cv2.INTER_AREA)
     # norm_image = cv2.normalize(resized, None, alpha = 0, beta = 1, norm_type = cv2.NORM_MINMAX, dtype = cv2.CV_32F)
     # norm_image = norm_image.reshape((norm_image.shape[0], norm_image.shape[1], 1))
     # case = np.asarray([norm_image])
@@ -75,7 +77,7 @@ for c in contours:
 
     # result = model.predict()
     cv2.imwrite(f'obj_{counter}.png', resized)
-    np.save(f'obj_{counter}.npy', resized)
+    # np.save(f'obj_{counter}.npy', resized)
 
     # Drawing the selected contour on the original image
     cv2.rectangle(final,(x,y),(x1,y1),(0, 0, 255), 5)
