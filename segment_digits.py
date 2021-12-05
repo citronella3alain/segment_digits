@@ -8,7 +8,7 @@ import tensorflow as tf
 from tensorflow import keras
 from matplotlib import pyplot as plt
 
-model = keras.models.load_model('trained_model/')
+model_nums = keras.models.load_model('model_nums/')
 filename = sys.argv[1]
 # cv2.namedWindow('output', cv2.WINDOW_NORMAL)
 input_img = cv2.imread(filename)
@@ -29,13 +29,6 @@ ret, th = cv2.threshold(img_blurred, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_
 # plt.imshow(labels)
 # print(labels)
 
-img_in, contours, hierarchy = cv2.findContours(th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-digitCnts = []
-areas = []
-final = input_img.copy()  
-
-# final_h, final_w = final.shape
 def perim(frac, dim, draw_on):
     h, w = dim
     # y1, x1, y2, x2
@@ -43,25 +36,12 @@ def perim(frac, dim, draw_on):
     coords = [int(c) for c in coords]
     cv2.rectangle(draw_on, (coords[1], coords[0]), (coords[3], coords[2]), (0, 255, 0), 5)
     return coords
-
-
-counter = 0
-# print(hierarchy)
-p_coords = perim(.95, th.shape, final)
-for c in contours:
-    (x, y, w, h) = cv2.boundingRect(c)
-    if w*h<1000 or x < p_coords[1] or x + w > p_coords[3] or y < p_coords[0] or y > p_coords[2]:
-        continue
-    # print(counter, w*h, x, y, w, h)
-    areas.append(w*h)
-    # if the contour is sufficiently large, it must be a digit
-#     if (w >= 20 and w <= 290) and h >= (th3.shape[0]>>1)-15:
+def condition(x, y, w, h):
+    return not (w*h<1000 or x < p_coords[1] or x + w > p_coords[3] or y < p_coords[0] or y > p_coords[2])
+def pad2square(img, side_len, x, y, w, h):
     x1 = x+w
     y1 = y+h
-    xmid = x + w//2
-    ymid = y + w//2
-    digitCnts.append([x,x1,y,y1])
-    char_box = th[y:y1, x:x1]
+    char_box = img[y:y1, x:x1]
     if h > w:
         squared_img = np.pad(char_box, [(0,),((h-w)//2,)])
     elif h < w:
@@ -69,18 +49,53 @@ for c in contours:
     else:
         squared_img = char_box
     squared_img = np.pad(squared_img, int(.2*max(h, w)))
-    resized = cv2.resize(squared_img, (28, 28), interpolation= cv2.INTER_AREA)
+    resized = cv2.resize(squared_img, (side_len, side_len), interpolation= cv2.INTER_AREA)
+    return resized
+
+img_in, cntrs, hierarchy = cv2.findContours(th, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+digitCnts = []
+areas = []
+final = input_img.copy()  
+
+counter = 0
+p_coords = perim(.95, th.shape, final)
+bounding_boxes = [cv2.boundingRect(c) for c in cntrs]
+bounding_boxes = sorted([box for box in bounding_boxes if condition(*box)], key=lambda b: (b[0], b[1]))
+for c in cntrs:
+    (x, y, w, h) = cv2.boundingRect(c)
+    if w*h<1000 or x < p_coords[1] or x + w > p_coords[3] or y < p_coords[0] or y > p_coords[2]:
+        continue
+    # print(counter, w*h, x, y, w, h)
+    areas.append(w*h)
+    # if the contour is sufficiently large, it must be a digit
+#     if (w >= 20 and w <= 290) and h >= (th3.shape[0]>>1)-15:
+    # x1 = x+w
+    # y1 = y+h
+    # xmid = x + w//2
+    # ymid = y + w//2
+    # # digitCnts.append([x,x1,y,y1])
+    # char_box = th[y:y1, x:x1]
+    # if h > w:
+    #     squared_img = np.pad(char_box, [(0,),((h-w)//2,)])
+    # elif h < w:
+    #     squared_img = np.pad(char_box, [((w-h)//2,), (0, )])
+    # else:
+    #     squared_img = char_box
+    # squared_img = np.pad(squared_img, int(.2*max(h, w)))
+    # resized = cv2.resize(squared_img, (28, 28), interpolation= cv2.INTER_AREA)
+    resized = pad2square(th, 28, x, y, w, h)
     # norm_image = cv2.normalize(resized, None, alpha = 0, beta = 1, norm_type = cv2.NORM_MINMAX, dtype = cv2.CV_32F)
     # norm_image = norm_image.reshape((norm_image.shape[0], norm_image.shape[1], 1))
     # case = np.asarray([norm_image])
     # pred = model.predict_classes([case])
 
-    result = model.predict(np.array([resized]))
+    result = np.argmax(model_nums.predict(np.array([resized])))
     cv2.imwrite(f'obj_{counter}.png', resized)
     # np.save(f'obj_{counter}.npy', resized)
 
     # Drawing the selected contour on the original image
-    cv2.rectangle(final,(x,y),(x1,y1),(0, 0, 255), 5)
+    cv2.rectangle(final,(x,y),(x+w,y+h),(0, 0, 255), 5)
     final = cv2.putText(final, f'{result}', (x, y+h), cv2.FONT_HERSHEY_SIMPLEX, 8, (255, 0, 0), 2, cv2.LINE_AA)
     counter += 1
 cv2.imwrite(f'ann_{filename}', final)
