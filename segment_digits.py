@@ -8,7 +8,7 @@ import tensorflow as tf
 from tensorflow import keras
 from matplotlib import pyplot as plt
 
-# model = keras.models.load_model('./results/')
+model = keras.models.load_model('trained_model/')
 filename = sys.argv[1]
 # cv2.namedWindow('output', cv2.WINDOW_NORMAL)
 input_img = cv2.imread(filename)
@@ -75,12 +75,12 @@ for c in contours:
     # case = np.asarray([norm_image])
     # pred = model.predict_classes([case])
 
-    # result = model.predict()
+    result = model.predict(np.array([resized]))
     cv2.imwrite(f'obj_{counter}.png', resized)
     # np.save(f'obj_{counter}.npy', resized)
 
     # Drawing the selected contour on the original image
     cv2.rectangle(final,(x,y),(x1,y1),(0, 0, 255), 5)
-    final = cv2.putText(final, f'{counter}', (x, y+h), cv2.FONT_HERSHEY_SIMPLEX, 8, (255, 0, 0), 2, cv2.LINE_AA)
+    final = cv2.putText(final, f'{result}', (x, y+h), cv2.FONT_HERSHEY_SIMPLEX, 8, (255, 0, 0), 2, cv2.LINE_AA)
     counter += 1
 cv2.imwrite(f'ann_{filename}', final)
